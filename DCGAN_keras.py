@@ -57,31 +57,32 @@ def create_validation_dataset(directory,batch_size,image_size)    :
         batch_size=batch_size)
     return val_ds
 
-train_ds=create_training_dataset(img_data, 8, (720,1280))
+train_ds=create_training_dataset(img_data, 8, (720,1280)) #image size can still be rescaled, doesn't have to be 1280x720
 val_ds=create_validation_dataset(img_data, 8, (720,1280))
 
 
-#class names : depth, labels, RGB       
+#class names : depth, labels, RGB  (folder names)      
 class_names = train_ds.class_names
 print(class_names) 
 
 
 
-#visualizing the data
-"""
+#visualizing the data, OPTIONAL
+
 plt.figure(figsize=(10, 10))
 for images, labels in train_ds.take(1):
   for i in range(9):
     ax = plt.subplot(3, 3, i + 1)
     plt.imshow(images[i].numpy().astype("uint8"))
     plt.title(class_names[labels[i]])
-    plt.axis("off")"""
+    plt.axis("off")
 
 
 #Data standardization
 """The RGB channel values are in the [0, 255] range. This is not ideal for a neural network; 
 in general you should seek to make your input values small. Here, we will standardize values 
 to be in the [0, 1] by using a Rescaling layer."""
+
 def normalize_dataset(dataset):
     normalization_layer = tf.keras.layers.experimental.preprocessing.Rescaling(1./255)
     normalized_ds = dataset.map(lambda x, y: (normalization_layer(x), y))
@@ -106,13 +107,22 @@ def autotune_dataset(dataset):
 ############                                                                   ############
 ###########################################################################################
 
-(train_images, train_labels), (_, _) = tf.keras.datasets.mnist.load_data()
+#this is the default method found on github to load MNIST dataset.
+(train_images, train_labels), (_, _) = tf.keras.datasets.mnist.load_data() #is second empty tuple (test_images, test_labels)?
+
+#the images are then rescaled and normalized.
 train_images = train_images.reshape(train_images.shape[0], 28, 28, 1).astype('float32')
 train_images = (train_images - 127.5) / 127.5 # Normalize the images to [-1, 1]
 BUFFER_SIZE = 60000
 BATCH_SIZE = 256
 # Batch and shuffle the data
-train_dataset = tf.data.Dataset.from_tensor_slices(train_images).shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+train_dataset = tf.data.Dataset.from_tensor_slices(train_images).shuffle(BUFFER_SIZE).batch(BATCH_SIZE) #creates a dataset object
+#instead, I could simply use my object train_ds from above which already contains the RGB images (ONLY)
+
+
+
+
+"""~~~ GENERATOR AND DISCRIMINATOR ~~~"""
 
 def make_generator_model():
     model = tf.keras.Sequential()
@@ -134,7 +144,7 @@ def make_generator_model():
     model.add(layers.LeakyReLU())
 
     model.add(layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
-    assert model.output_shape == (None, 28, 28, 1)
+    assert model.output_shape == (None, 28, 28, 1) #does this need to change? 28x28 is the MNIST resolution.
 
     return model
 
@@ -143,7 +153,7 @@ def make_generator_model():
 def make_discriminator_model():
     model = tf.keras.Sequential()
     model.add(layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same',
-                                     input_shape=[28, 28, 1]))
+                                     input_shape=[28, 28, 1])) #change input_shape according to input dataset dimension?
     model.add(layers.LeakyReLU())
     model.add(layers.Dropout(0.3))
 
@@ -154,7 +164,7 @@ def make_discriminator_model():
     model.add(layers.Flatten())
     model.add(layers.Dense(1))
 
-    return model
+    return model    #does it need more layers? maybe also change this function so it takes image_size as input?
 
 
 
@@ -163,12 +173,18 @@ generator = make_generator_model()
 noise = tf.random.normal([1, 100])
 generated_image = generator(noise, training=False)
 
-plt.imshow(generated_image[0, :, :, 0], cmap='gray')
+plt.imshow(generated_image[0, :, :, 0], cmap='gray') #show initially generated noise
 
 
 discriminator = make_discriminator_model()
 decision = discriminator(generated_image)
 print (decision)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
+
+
+""" ~~~ LOSS FUNCTIONS ~~~ """
 
 # This method returns a helper function to compute cross entropy loss
 cross_entropy = tf.keras.losses.BinaryCrossentropy(from_logits=True)
@@ -182,7 +198,7 @@ def discriminator_loss(real_output, fake_output):
 def generator_loss(fake_output):
     return cross_entropy(tf.ones_like(fake_output), fake_output)
 
-generator_optimizer = tf.keras.optimizers.Adam(1e-4)
+generator_optimizer = tf.keras.optimizers.Adam(1e-4) #Adam should be the best optimizer for GAN training. 
 discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 
 checkpoint_dir = './training_checkpoints'
@@ -262,9 +278,15 @@ def generate_and_save_images(model, epoch, test_input):
   plt.show()
   
   
-train(train_dataset, EPOCHS)  
+train(train_dataset, EPOCHS)  #Gives an error when using my train_ds instead of the MNIST dataset.
 
 checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
+
+
+
+
+
+
 
 
 # Display a single image using the epoch number
