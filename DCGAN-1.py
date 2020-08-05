@@ -5,9 +5,14 @@ Created on Tue Aug  4 00:04:34 2020
 @author: Omar
 
 
-
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 WORKING DCGAN IMPLEMENTATION FOR TENSROFLOW 2+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
+This implementation works, but the results are not satisfying; maybe the problem lies in the layers of the network itself? 
+The training is really fast.
 
 """
 
@@ -38,11 +43,12 @@ def hms_string(sec_elapsed):
     return "{}:{:>02}:{:>05.2f}".format(h, m, s)
 
 #Path to the images needed for training and testing
-#data_dir ="D:\\University\\Uni Stuttgart\\Bachelorarbeit\\Implementation\\TestdatenHandaufnahme"
+#Main directory, which contains subfolder "faces" containing the faces dataset
 data_dir = "D:\\University\\Uni Stuttgart\\Bachelorarbeit\\face GAN"
+
+
 # Generation resolution - Must be square 
 # Training data is also scaled to this.
-
 GENERATE_RES = 3 # Generation resolution factor 
 # (1=32, 2=64, 3=96, 4=128, etc.)
 GENERATE_SQUARE = 32 * GENERATE_RES # rows/cols (should be square)
@@ -66,12 +72,15 @@ print(f"Will generate {GENERATE_SQUARE}px square images.")
 
 
 #Data loading and preprocessing
-# Image set has 204 images.  Can take over an hour 
+# Image set has 21k+ images.  Can take some time 
 # for initial preprocessing.
 # Because of this time needed, save a Numpy preprocessed file.
 # Note, that file is large enough to cause problems for 
 # sume verisons of Pickle,
 # so Numpy binary files are used.
+# ~~ This is the first method to load the dataset, using arrays. Other method uses
+# keras: tf.keras.preprocessing.image_dataset_from_directory
+
 training_binary_path = os.path.join(DATA_PATH,
         f'training_data_{GENERATE_SQUARE}_{GENERATE_SQUARE}.npy')
 
@@ -106,12 +115,14 @@ else:
 '''We will use a TensorFlow Dataset object to actually hold the images. 
 #This allows the data to be quickly shuffled int divided into the appropriate batch sizes for training.'''
 # Batch and shuffle the data
+# NOTE: tf.keras.preprocessing.image_dataset_from_directory does the same in one step, without the need to create an array
+
 train_dataset = tf.data.Dataset.from_tensor_slices(training_data).shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 
 
 
 
-"""Generator and Discriminator""" 
+                                    """ ~~~ Generator and Discriminator ~~~ """ 
 
 #generator
 def build_generator(seed_size, channels):
